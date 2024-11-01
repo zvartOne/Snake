@@ -1,7 +1,9 @@
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::{cursor, execute};
+use rand::{Rng};
 use std::io;
 use std::io::stdout;
+use std::ops::Range;
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
@@ -33,6 +35,10 @@ fn write(snake: &Snake, buff: &mut Vec<Vec<char>>) -> bool {
     false
 }
 
+fn write_apple(apple: &Point, buff: &mut Vec<Vec<char>>){
+    buff[apple.y as usize][apple.x as usize] = '@';
+}
+
 fn update() {
     sleep(Duration::from_millis(150));
     Command::new("clear").status().expect("none");
@@ -45,7 +51,7 @@ fn clear(buff: &mut Vec<Vec<char>>) {
         }
     }
 }
-
+#[derive(Copy, Clone)]
 struct Point {
     pub x: i32,
     pub y: i32,
@@ -55,18 +61,25 @@ struct Snake {
     head: Point,
     body: Vec<Point>,
 }
-
+fn gen_apple(range_x: Range<i32>, range_y: Range<i32>) -> Point {
+    Point {
+        x: rand::thread_rng().gen_range(range_x),
+        y: rand::thread_rng().gen_range(range_y),
+    }
+}
 impl Snake {
     fn new(head: Point, body: Vec<Point>) -> Self {
         Snake { head, body }
     }
 
     pub fn move_snake(&mut self, forward: Forward) {
+        let len = self.body.len() - 1;
+        for i in 0..len {
+            self.body[len - i] = self.body[len - i - 1];
+        }
+        self.body[0] = self.head;
         match forward {
             Forward::Left => {
-                for i in self.body.iter().last().clone() {
-                    
-                }
                 self.head.x -= 1;
             }
             Forward::Right => {
@@ -97,7 +110,9 @@ enum Forward {
 }
 
 fn main() -> io::Result<()> {
-    let mut play_area = vec![vec![' '; 50]; 25];
+    const WIDTH: i32 = 50;
+    const HEIGHT: i32 = 25;
+    let mut play_area = vec![vec![' '; WIDTH as usize]; HEIGHT as usize];
     let mut snake = Snake::new(
         Point { x: 15, y: 15 },
         vec![Point { x: 14, y: 15 }, Point { x: 13, y: 15 }],
@@ -151,7 +166,7 @@ fn main() -> io::Result<()> {
             snake.head = Point { x: 15, y: 15 };
             current_key_code = Forward::Unknown;
         }
-
+        write_apple(&gen_apple(0..WIDTH, 0..HEIGHT), &mut play_area);
         draw(&play_area);
         update();
         clear(&mut play_area);
