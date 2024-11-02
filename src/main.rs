@@ -121,6 +121,8 @@ fn main() -> io::Result<()> {
     let mut hide_cursor = stdout();
     execute!(hide_cursor, cursor::Hide).expect("Не удалось скрыть курсор");
     let mut key_event = Event::Key(KeyEvent::new(KeyCode::Right, KeyModifiers::empty()));
+
+    let apple = gen_apple(0..WIDTH, 0..HEIGHT);
     loop {
         if poll(Duration::ZERO)? {
             key_event = read()?;
@@ -166,7 +168,7 @@ fn main() -> io::Result<()> {
             snake.head = Point { x: 15, y: 15 };
             current_key_code = Forward::Unknown;
         }
-        write_apple(&gen_apple(0..WIDTH, 0..HEIGHT), &mut play_area);
+        write_apple( &apple, &mut play_area);
         draw(&play_area);
         update();
         clear(&mut play_area);
