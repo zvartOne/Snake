@@ -1,6 +1,7 @@
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::{cursor, execute};
-use rand::{Rng};
+use rand::Rng;
+use std::cmp::PartialEq;
 use std::io;
 use std::io::stdout;
 use std::ops::Range;
@@ -8,6 +9,22 @@ use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
 
+const WIDTH: i32 = 50;
+const HEIGHT: i32 = 25;
+const POSITION_HEAD: Point = Point {
+    x: WIDTH / 2,
+    y: HEIGHT / 2,
+};
+const POSITION_BODY: [Point; 2] = [
+    Point {
+        x: WIDTH / 2 - 2,
+        y: HEIGHT / 2,
+    },
+    Point {
+        x: WIDTH / 2 - 1,
+        y: HEIGHT / 2,
+    },
+];
 fn draw(buff: &Vec<Vec<char>>) {
     for i in buff {
         for j in i {
@@ -35,7 +52,7 @@ fn write(snake: &Snake, buff: &mut Vec<Vec<char>>) -> bool {
     false
 }
 
-fn write_apple(apple: &Point, buff: &mut Vec<Vec<char>>){
+fn write_apple(apple: &Point, buff: &mut Vec<Vec<char>>) {
     buff[apple.y as usize][apple.x as usize] = '@';
 }
 
@@ -51,7 +68,7 @@ fn clear(buff: &mut Vec<Vec<char>>) {
         }
     }
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 struct Point {
     pub x: i32,
     pub y: i32,
@@ -60,6 +77,7 @@ struct Point {
 struct Snake {
     head: Point,
     body: Vec<Point>,
+    health: u32,
 }
 fn gen_apple(range_x: Range<i32>, range_y: Range<i32>) -> Point {
     Point {
@@ -67,11 +85,18 @@ fn gen_apple(range_x: Range<i32>, range_y: Range<i32>) -> Point {
         y: rand::thread_rng().gen_range(range_y),
     }
 }
-impl Snake {
-    fn new(head: Point, body: Vec<Point>) -> Self {
-        Snake { head, body }
-    }
 
+struct GameStatus {
+    pub score: i32,
+}
+
+impl GameStatus {
+    fn score_status(&mut self) {
+        self.score = 0;
+    }
+}
+
+impl Snake {
     pub fn move_snake(&mut self, forward: Forward) {
         let len = self.body.len() - 1;
         for i in 0..len {
@@ -98,6 +123,33 @@ impl Snake {
     fn get_head(&self) -> &Point {
         &self.head
     }
+    fn up_body(&mut self) {
+        self.body.push(Point {
+            x: self.body.last().unwrap().x,
+            y: self.body.last().unwrap().y,
+        });
+    }
+    fn eat(&self, apple: &Point) -> bool {
+        self.head == *apple
+    }
+
+    fn spawn() -> Self {
+        Self {
+            head: POSITION_HEAD,
+            body: POSITION_BODY.to_vec(),
+            health: 2,
+        }
+    }
+
+    fn respawn(&mut self) {
+        self.head = POSITION_HEAD;
+        self.body = POSITION_BODY.to_vec();
+        self.health -= 1;
+    }
+
+    fn is_alive(&self) -> bool {
+        self.health != 0
+    }
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -110,19 +162,13 @@ enum Forward {
 }
 
 fn main() -> io::Result<()> {
-    const WIDTH: i32 = 50;
-    const HEIGHT: i32 = 25;
     let mut play_area = vec![vec![' '; WIDTH as usize]; HEIGHT as usize];
-    let mut snake = Snake::new(
-        Point { x: 15, y: 15 },
-        vec![Point { x: 14, y: 15 }, Point { x: 13, y: 15 }],
-    );
     let mut current_key_code = Forward::Unknown;
     let mut hide_cursor = stdout();
     execute!(hide_cursor, cursor::Hide).expect("Не удалось скрыть курсор");
     let mut key_event = Event::Key(KeyEvent::new(KeyCode::Right, KeyModifiers::empty()));
-
-    let apple = gen_apple(0..WIDTH, 0..HEIGHT);
+    let mut snake = Snake::spawn();
+    let mut apple = gen_apple(0..WIDTH, 0..HEIGHT);
     loop {
         if poll(Duration::ZERO)? {
             key_event = read()?;
@@ -163,12 +209,23 @@ fn main() -> io::Result<()> {
             _ => {}
         }
 
-        if write(&snake, &mut play_area) {
-            println!("Game over!");
-            snake.head = Point { x: 15, y: 15 };
-            current_key_code = Forward::Unknown;
+        if snake.eat(&apple) {
+            snake.up_body();
+            apple = gen_apple(0..WIDTH, 0..HEIGHT);
         }
-        write_apple( &apple, &mut play_area);
+
+        if write(&snake, &mut play_area) {
+            
+            current_key_code = Forward::Unknown;
+            if snake.is_alive(){
+                snake.respawn();
+            } else {
+                println!("Game over!");
+                return Ok(())  
+            }
+        }
+
+        write_apple(&apple, &mut play_area);
         draw(&play_area);
         update();
         clear(&mut play_area);
