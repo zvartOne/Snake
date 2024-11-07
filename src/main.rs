@@ -86,13 +86,24 @@ fn gen_apple(range_x: Range<i32>, range_y: Range<i32>) -> Point {
     }
 }
 
+#[derive(Debug)]
 struct GameStatus {
-    pub score: i32,
+    pub score: u32,
 }
 
 impl GameStatus {
-    fn score_status(&mut self) {
-        self.score = 0;
+    pub fn new() -> Self{
+        Self{
+            score: 0
+        }
+    }
+    
+    fn add_score(&mut self){
+        self.score += 10;
+    }
+    
+    fn get_score(&self) -> u32{
+        self.score
     }
 }
 
@@ -169,6 +180,7 @@ fn main() -> io::Result<()> {
     let mut key_event = Event::Key(KeyEvent::new(KeyCode::Right, KeyModifiers::empty()));
     let mut snake = Snake::spawn();
     let mut apple = gen_apple(0..WIDTH, 0..HEIGHT);
+    let mut score = GameStatus::new();
     loop {
         if poll(Duration::ZERO)? {
             key_event = read()?;
@@ -212,6 +224,7 @@ fn main() -> io::Result<()> {
         if snake.eat(&apple) {
             snake.up_body();
             apple = gen_apple(0..WIDTH, 0..HEIGHT);
+            score.add_score();
         }
 
         if write(&snake, &mut play_area) {
@@ -229,5 +242,6 @@ fn main() -> io::Result<()> {
         draw(&play_area);
         update();
         clear(&mut play_area);
+        print!("Score: {:?}", score.get_score())
     }
 }
