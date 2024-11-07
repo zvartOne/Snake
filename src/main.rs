@@ -8,6 +8,7 @@ use std::ops::Range;
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 const WIDTH: i32 = 50;
 const HEIGHT: i32 = 25;
@@ -28,9 +29,9 @@ const POSITION_BODY: [Point; 2] = [
 fn draw(buff: &Vec<Vec<char>>) {
     for i in buff {
         for j in i {
-            print!("{j}");
+            println!("{j}\r");
         }
-        println!();
+        println!("\r");
     }
 }
 
@@ -64,7 +65,7 @@ fn update() {
 fn clear(buff: &mut Vec<Vec<char>>) {
     for i in buff {
         for j in i {
-            *j = ' ';
+            *j = '.';
         }
     }
 }
@@ -173,10 +174,11 @@ enum Forward {
 }
 
 fn main() -> io::Result<()> {
+    enable_raw_mode()?;
     let mut play_area = vec![vec![' '; WIDTH as usize]; HEIGHT as usize];
     let mut current_key_code = Forward::Unknown;
-    let mut hide_cursor = stdout();
-    execute!(hide_cursor, cursor::Hide).expect("Не удалось скрыть курсор");
+    let mut term = stdout();
+    execute!(term, cursor::Hide).expect("Не удалось скрыть курсор");
     let mut key_event = Event::Key(KeyEvent::new(KeyCode::Right, KeyModifiers::empty()));
     let mut snake = Snake::spawn();
     let mut apple = gen_apple(0..WIDTH, 0..HEIGHT);
@@ -233,15 +235,18 @@ fn main() -> io::Result<()> {
             if snake.is_alive(){
                 snake.respawn();
             } else {
-                println!("Game over!");
+                println!("Game over!\r\n");
+                execute!(term, cursor::Show).expect("Не удалось отобразить курсор");
+                disable_raw_mode()?;
                 return Ok(())  
             }
         }
 
         write_apple(&apple, &mut play_area);
+        println!("Score: {:?}", score.get_score());
         draw(&play_area);
         update();
         clear(&mut play_area);
-        print!("Score: {:?}", score.get_score())
     }
+
 }
