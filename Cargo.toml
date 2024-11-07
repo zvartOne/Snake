@@ -8,6 +8,7 @@ edition = "2021"
 winapi = { version = "0.3.9", features = ["winuser"] }
 crossterm = "0.28.1"
 rand = { version = "0.8.5", features = [] }
-
+vulkano = "0.34.1"
+winit = "0.30.5"
 [profile.release]
 opt-level = 1
