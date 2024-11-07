@@ -29,7 +29,7 @@ const POSITION_BODY: [Point; 2] = [
 fn draw(buff: &Vec<Vec<char>>) {
     for i in buff {
         for j in i {
-            println!("{j}\r");
+            print!("{j}");
         }
         println!("\r");
     }
